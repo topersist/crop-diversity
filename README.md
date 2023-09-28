@@ -29,8 +29,8 @@ The ananlysis is composed of five MATLAB scripts and five R scripts:
 6) step6_holdridge_analyses_main.m
 	-  Modified from code from Kummu et al. (5). Combines Holdridge data with crop production data.
 	   Delineates crop specific SCSs and share of production and cropland area within and outside the SCS.
-	   These scripts require four external MATLAB packages: cbarrow, export_fig, crameri, wprctile. The script
-	   performs the analysis for one crop at a time with the following input parameters: env = 'local',
+	   Also needs data on resilience (8).These scripts require four external MATLAB packages: cbarrow, export_fig,
+	   crameri, wprctile. The script performs the analysis for one crop at a time with the following input parameters: env = 'local',
 	   spamcrop_name = (crop raster filename here without the '.tif'), res_yes = false, scenarios = 'warming', spam_year = '2010' or '2005'.
 	   
 
@@ -93,3 +93,5 @@ One Earth 4, 720–729 (2021).
 
 (7) Fick, S. E. & Hijmans, R. J. WorldClim 2: new 1-km spatial resolution climate surfaces for global land areas.
 International Journal of Climatology 37, 4302–4315 (2017).
+
+(8) Varis, O., Taka, M. & Kummu, M. The Planet’s Stressed River Basins: Too Much Pressure or Too Little Adaptive Capacity? Earth’s Future 7, 1118–1135 (2019).

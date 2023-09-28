@@ -1,4 +1,4 @@
-function holdridge_step4_analyses_main_triton(env, spamcrop_name, res_yes, scenarios, spam_year)
+function step6_holdridge_analyses_main(env, spamcrop_name, res_yes, scenarios, spam_year)
 %% Set working directory  
     if strcmp(env, 'triton')
         % set the triton work directory as working directory

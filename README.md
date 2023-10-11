@@ -3,31 +3,31 @@ By:Sara Heikonen, Matias Heino, Mika Jalava, Stefan Siebert, Daniel Viviroli, Ma
 
 The ananlysis is composed of five MATLAB scripts and five R scripts:
 
-1) step1_create_ref_data.R
-	- Create Shapefiles and rasters of World Bank regions (1), latitude zones and elevation (2) zones
-	- Create total cropland mask rasters for main analysis with SPAM 2010 crop producion data (3),
-	  for analysis with SPAM 2005 crop production data (4), and seasonal Safe Climatic Space (SCS) (5)
+1) step1_crop_calendar_filters.R
+	- Create monthly filter rasters for filtering climate parameter only within the cropping season (1),
+	  for limited number of crops. Used for supplementary, seasonal SCS analysis.
+
+2) step2_create_ref_data.R
+	- Create Shapefiles and rasters of World Bank regions (2), latitude zones and elevation (3) zones
+	- Create total cropland mask rasters for main analysis with SPAM 2010 crop producion data (4),
+	  for analysis with SPAM 2005 crop production data (5), and seasonal Safe Climatic Space (SCS) (6)
 	  analysis
 	- Create crop production rasters for maize and soybean with matching coverage for
 	  seasonal SCS analysis
 
-2) step2_crop_calendar_filters.R
-	- Create monthly filter rasters for filtering climate parameter only within the cropping season (6),
-	  for limited number of crops. Used for supplementary, seasonal SCS analysis.
-
 3) step3_holdridge_download_data_missing_removed.m
-	- Modified from code from Kummu et al. (5). Downloads present and future climate parameter data
+	- Modified from code from Kummu et al. (6). Downloads present and future climate parameter data
 	  datafrom Worldclim (7) and preprocess for next analysis steps. Data can be preprosessed either
 	  for main, annual SCS analysis or for supplementry analaysis with seasonal SCS.
 
 4) step4_holdridge_define_classes.m
-	-  Modified from code from Kummu et al. (5). Classifies global land area into Holdridge life zones.
+	-  Modified from code from Kummu et al. (6). Classifies global land area into Holdridge life zones.
 
 5) step5_holdridge_calculate_change.m
-	-  Modified from code from Kummu et al. (5). Calculates future shifts in Holdridge life zones.
+	-  Modified from code from Kummu et al. (6). Calculates future shifts in Holdridge life zones.
 
 6) step6_holdridge_analyses_main.m
-	-  Modified from code from Kummu et al. (5). Combines Holdridge data with crop production data.
+	-  Modified from code from Kummu et al. (6). Combines Holdridge data with crop production data.
 	   Delineates crop specific SCSs and share of production and cropland area within and outside the SCS.
 	   Also needs data on resilience (8).These scripts require four external MATLAB packages: cbarrow, export_fig,
 	   crameri, wprctile. The script performs the analysis for one crop at a time with the following input parameters: env = 'local',
@@ -52,12 +52,12 @@ The ananlysis is composed of five MATLAB scripts and five R scripts:
 	  annual SCS approach and seasonal SCS approach. The selction between approaches is made in step 3, and the steps after that are the
 	  same with both approaches.
 
-Modified from code from Kummu et al. (5): Functions (apart from those that are from external packages) required for running the MATLAB scripts are
+Modified from code from Kummu et al. (6): Functions (apart from those that are from external packages) required for running the MATLAB scripts are
 in the 'functions' folder. The data used for downloading the data and creating the Holdridge life zones are in the 'input' folder. In addition,
 in the 'input' folder, there is the land mask file that was used for these analyses, and in the 'ref_data' folder, the country code file and raster,
 and the crop group code file that were used in these analyses.
 
-The scripts have coherent file structure and external data needed to perform the analyses are listed in References, (2-4, 6, 7).
+The scripts have coherent file structure and external data needed to perform the analyses are listed in References, (1-5, 7, 8).
 
 Used MATLAB version: 9.14.0.2239454 (R2023a)
 
@@ -75,21 +75,21 @@ raveio_0.1.0
 
 Refrerences
 
-(1) The World Bank Group. World Bank Country and Lending Groups – World Bank Data Help Desk. 
+(1) Jägermeyr, J., Müller, C., Minoli, S., Ray, D. & Siebert, S. GGCMI Phase 3 crop calendar. (2021) doi:10.5281/zenodo.5062513.
+
+(2) The World Bank Group. World Bank Country and Lending Groups – World Bank Data Help Desk. 
 https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups.
 
-(2) Lehner, B., Verdin, K. & Jarvis, A. New Global Hydrography Derived From Spaceborne Elevation Data. 
+(3) Lehner, B., Verdin, K. & Jarvis, A. New Global Hydrography Derived From Spaceborne Elevation Data. 
 Eos, Transactions American Geophysical Union 89, 93–94 (2008).
 
-(3) Yu, Q. et al. A cultivated planet in 2010 – Part 2: The global gridded agricultural-production maps.
+(4) Yu, Q. et al. A cultivated planet in 2010 – Part 2: The global gridded agricultural-production maps.
 Earth System Science Data 12, 3545–3572 (2020).
 
-(4) Wood-Sichra, Ulrike, Joglekar, Alison B., & You, Liangzhi. Spatial production allocation model (SPAM) 2005: Technical documentation. (2016).
+(5) Wood-Sichra, Ulrike, Joglekar, Alison B., & You, Liangzhi. Spatial production allocation model (SPAM) 2005: Technical documentation. (2016).
 
-(5) Kummu, M., Heino, M., Taka, M., Varis, O. & Viviroli, D. Climate change risks pushing one-third of global food production outside the safe climatic space.
+(6) Kummu, M., Heino, M., Taka, M., Varis, O. & Viviroli, D. Climate change risks pushing one-third of global food production outside the safe climatic space.
 One Earth 4, 720–729 (2021).
-
-(6) Jägermeyr, J., Müller, C., Minoli, S., Ray, D. & Siebert, S. GGCMI Phase 3 crop calendar. (2021) doi:10.5281/zenodo.5062513.
 
 (7) Fick, S. E. & Hijmans, R. J. WorldClim 2: new 1-km spatial resolution climate surfaces for global land areas.
 International Journal of Climatology 37, 4302–4315 (2017).

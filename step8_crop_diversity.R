@@ -20,6 +20,7 @@ working_dir <- getwd()
 #groupings <- c('group', 'food', 'nonfood')
 groupings <- c('group', 'food', 'only_maize', 'only_soyb')
 
+
 # Crop data year?
 spam_year <- '2010'
 
@@ -477,6 +478,30 @@ for (grouping in groupings){
       r_prod_stack <- extend(r_prod_stack, r_land)
     }
     
+    # % global and % regional production of all food/nonfood crops outside SCS
+    
+    if (group %in% c('FOOD', 'NONFOOD')) {
+    
+    tbl_all_crops_perc <- tbl_crop_perc %>%
+      mutate_at(vars(`1.5`:`5_high`), ~ .x * ref_tot) %>%
+      summarise_if(is.numeric, sum) %>%
+      mutate_at(vars(`1.5`:`5_high`), ~ .x / ref_tot)
+    
+    tbl_all_crops_perc_reg <- tbl_crop_perc_reg %>%
+      dplyr::select(-region_code) %>%
+      mutate_at(vars(`1.5`:`5_high`), ~ .x * ref_tot) %>%
+      group_by(REGION_WB) %>%
+      summarise_if(is.numeric, sum) %>%
+      mutate_at(vars(`1.5`:`5_high`), ~ .x / ref_tot)
+    
+    out_filename_table_perc_all <- paste(results_path, 'tables/', group, '/SCS_out_perc_all_crops_', group, '.csv', sep="")
+    write.csv(tbl_all_crops_perc, out_filename_table_perc_all, row.names=FALSE)
+    
+    out_filename_table_perc_all_reg <- paste(results_path, 'tables/', group, '/SCS_out_perc_all_crops_regional', group, '.csv', sep="")
+    write.csv(tbl_all_crops_perc_reg, out_filename_table_perc_all_reg, row.names=FALSE)
+    
+    }
+    
     ## % production outside SCS
     # save global aggregated results
     out_filename_table_perc <- paste(results_path, 'tables/', group, '/SCS_out_perc_', group, '.csv', sep="")
@@ -490,6 +515,8 @@ for (grouping in groupings){
     # save global aggregated results
     out_filename_table_perc_area <- paste(results_path, 'tables/', group, '/SCS_area_change_perc_', group, '.csv', sep="")
     write.csv(tbl_area_perc, out_filename_table_perc_area, row.names=FALSE)
+    
+    #---------------------------------------------------------------------------
 
     # total cropland mask & cropland area
     r_tot_cropland <- sum((r_SCS_tot_baseline_stack >= 0), na.rm=TRUE) > 0

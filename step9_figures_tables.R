@@ -71,7 +71,7 @@ plot_bar <- function(table_long, group, results_path, pal, aggreg = '', food_lis
     xlab("Global warming") +
     ggtitle(paste(group, area, sep = " ")) +
     theme(plot.background = element_blank(), panel.grid.minor = element_blank(),
-          panel.grid.major = element_line(colour = 'grey80'),
+          panel.grid.major.y = element_line(colour = 'grey70'), panel.grid.major.x = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black"))
   
   
@@ -516,14 +516,14 @@ plot_background <- function(coastline, r_land, results_path) {
 
   
   breakvals <- c(-1, 0.1, 1.1)
-  cols <- c('white', 'grey95')
+  cols <- c('white', 'grey85')
   
   plt_bg_map <- tm_shape(r_land) +
                 tm_raster(palette = cols,
                           breaks = breakvals,
-                          legend.show = FALSE) +
-                tm_shape(coastline, projection = "ESRI:54030") + 
-                tm_lines(col = "grey60", lwd = 0.25)
+                          legend.show = FALSE) #+
+                #tm_shape(coastline, projection = "ESRI:54030") + 
+                #tm_lines(col = "grey60", lwd = 0.25)
   
   
   
@@ -590,13 +590,13 @@ results_path <- paste0(working_dir, '/results_review_200323_2010/')
 # crop group coding
 group_codes <- read.xlsx('ref_data/fao_food_groups.xlsx')
 group_list <- c(sort(unique(group_codes$fao_group)[1:5]), unique(group_codes$fao_group)[6:9])
-food_list <- sort(unique(group_codes[group_codes$food == 1,]$fao_group))
+food_list <- c(sort(unique(group_codes[group_codes$food == 1,]$fao_group)), 'TOTAL') 
 
 barplot_pal <- c('#D59977', '#DDCC77', '#44AA99', '#88CCEE', '#CC6677', '#882255',
-                 '#44AA99', '#88CCEE', '#CC6677', '#882255')
+                 '#44AA99', '#88CCEE', '#CC6677', '#882255', 'grey70')
 
 
-names(barplot_pal) <- c('CEREALS1', group_list)
+names(barplot_pal) <- c('CEREALS1', group_list, 'TOTAL')
 
 # load land mask and coastline
 land_data <- read_mat('holdridge_data/hLand.mat')
@@ -995,6 +995,17 @@ for (grouping in groupings){
 
 
       ## REGIONAL AGGREGATE PLOTS ##
+      
+      # read table showing % total production in region outside the SCS.
+      # transform to percentage and select only median results
+      table_all_prod_reg_path <- table_regional_path <- paste(results_path, 'tables/', group, '/SCS_out_perc_all_crops_regional', group, '.csv', sep="")
+      table_all_prod_reg <- read.csv(table_all_prod_reg_path)%>%
+        rename(subregion = REGION_WB) %>%
+        mutate_at(vars(`X1.5`:`X5_high`), ~.x * 100) %>%
+        select(-ref_tot)
+      
+      colnames(table_all_prod_reg) <- sub("X", "", colnames(table_all_prod_reg))
+      
 
       for (region in regions){
 
@@ -1002,6 +1013,12 @@ for (grouping in groupings){
         SCS_table_region_spec <- SCS_table_regional %>%
           filter(subregion == region) %>%
           dplyr::select(-c(subregion, region_code))
+        
+        # select region specific data from all production summary data frame
+        table_all_prod_reg_spec <- table_all_prod_reg %>%
+          filter(subregion == region) %>%
+          mutate(CROP = 'TOTAL', .before = `1.5`) %>%
+          select(-subregion)
 
         # add column for total prod in reference conditions
         SCS_table_prod <- SCS_table_region_spec %>%
@@ -1017,39 +1034,40 @@ for (grouping in groupings){
 
         # transform into percentage
         group_perc_table <- SCS_table_prod_sums %>%
-          mutate_at(vars(`1.5`:`5_high`), ~ .x / ref_tot) %>%
+          mutate_at(vars(`1.5`:`5_high`), ~ .x / ref_tot *100) %>%
           rename(CROP = fao_group) %>%
           dplyr::select(-17)
+        
+        # join with data from all crops summary data frame
+        group_perc_table_all <- group_perc_table %>%
+          bind_rows(table_all_prod_reg_spec)
 
         # transform perc out to long format
-        group_perc_out_table_long <- group_perc_table %>%
+        group_perc_out_table_long <- group_perc_table_all %>%
           dplyr::select(!contains("_")) %>%
           pivot_longer(cols=-CROP,
                        names_to = "warming",
                        values_to = "perc_out_SCS") %>%
-          mutate(warming = as.numeric(warming),
-                 perc_out_SCS = perc_out_SCS * 100)
+          mutate(warming = as.numeric(warming))
 
         # transform 5th percentile out to long format
-        group_perc_low_table_long <- group_perc_table %>%
+        group_perc_low_table_long <- group_perc_table_all %>%
           dplyr::select(c(CROP, contains("_low"))) %>%
           pivot_longer(cols=(-CROP),
                        names_to = c("warming", "bound"),
                        names_sep = ("_"),
                        values_to = "limit_low") %>%
-          mutate(warming = as.numeric(warming),
-                 limit_low = limit_low * 100) %>%
+          mutate(warming = as.numeric(warming)) %>%
           dplyr::select(-bound)
 
         # transform 95th percentile out to long format
-        group_perc_high_table_long <- group_perc_table %>%
+        group_perc_high_table_long <- group_perc_table_all %>%
           dplyr::select(c(CROP, contains("_high"))) %>%
           pivot_longer(cols=(-CROP),
                        names_to = c("warming", "bound"),
                        names_sep = ("_"),
                        values_to = "limit_high") %>%
-          mutate(warming = as.numeric(warming),
-                 limit_high = limit_high * 100) %>%
+          mutate(warming = as.numeric(warming)) %>%
           dplyr::select(-bound)
 
         # merge long format dataframes before plotting

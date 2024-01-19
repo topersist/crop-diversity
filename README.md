@@ -61,6 +61,9 @@ The scripts have coherent file structure and external data needed to perform the
 
 Used MATLAB version: 9.14.0.2239454 (R2023a)
 
+Used external MATLAB packages and their versions:
+cbarrow 1.1.0.0, crameri 1.08, export_fig 3.27, wprctile 1.0.0.0
+
 Used R version: 4.3.1
 
 Used R base packages: stats, graphics, grDevices, utils, datasets, methods, base

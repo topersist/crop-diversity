@@ -1,12 +1,20 @@
-function [SCS_out, aggreg_SCS_GCMs, SCS_nores_out, region_table, aggreg_area_GCMs] = f_hold_ref_box_to_raster_allGCMs(ref_data,...
-    hold_scen_x, hold_scen_y, bool_present_scenario, hLand, res_raster, region_m, R_region, ...
-    total_cropland_mask, ref_map_baseline)
+function [SCS_out, aggreg_SCS_GCMs, region_table, aggreg_area_GCMs] = f_hold_ref_box_to_raster_allGCMs(ref_data,...
+    hold_scen_x, hold_scen_y, bool_present_scenario, hLand, region_m, cropland_area, ...
+    total_cropland_mask, ref_mask_baseline)
 
-    % Obtain resilience quantiles, and isolate lowest resilience quantiles
-    [res_cats, temp] = f_hold_rast_categories(res_raster, res_raster, 4, 4);
-    %res_cats
-    res_rast_boolean = res_raster >= res_cats(1) & res_raster < res_cats(2);
 
+%% Testing
+% ref_data = ref_95_prcnt_pres;
+% hold_scen_x = hold_map_future(:,:,2,:);
+% hold_scen_y = hold_map_future(:,:,3,:);
+% bool_present_scenario = bool_box_present_limited;
+% hLand = hLand;
+% region_m = region_m;
+% cropland_area = total_cropland_area;
+% total_cropland_mask = total_cropland_mask;
+% ref_mask_baseline = ref_95_present_mask;
+
+%%
     % Initialize grid intervals.
     thresholds = linspace(0.0,1.0,101);
     thresholds(1) = -inf;
@@ -16,8 +24,8 @@ function [SCS_out, aggreg_SCS_GCMs, SCS_nores_out, region_table, aggreg_area_GCM
     SCS_map_v = zeros(size(land_v));
 
     % Create empty tables for aggregated results
-    aggreg_SCS_GCMs = zeros(size(hold_scen_x,5),2);
-    aggreg_area_GCMs = zeros(size(hold_scen_x,5),5);
+    aggreg_SCS_GCMs = zeros(size(hold_scen_x,4),2);
+    aggreg_area_GCMs = zeros(size(hold_scen_x,4),5);
 
     % Create region indices
     region_m(region_m == 0) = max(region_m(:))+99;
@@ -28,21 +36,22 @@ function [SCS_out, aggreg_SCS_GCMs, SCS_nores_out, region_table, aggreg_area_GCM
 
     % Create table for regional results - columns: region id, sum
     % of reference data, proportion outside SCS (still empty)
-    region_table = [region_idx, ref_tot_per_region, zeros(length(region_idx), size(hold_scen_x,5))];
+    region_table = [region_idx, ref_tot_per_region, zeros(length(region_idx), size(hold_scen_x,4))];
 
 %%
     % Loop through all GCMs
-    for GCM_index = 1:size(hold_scen_x,5)
-        
+    for GCM_index = 1:size(hold_scen_x,4)
+        %%
 
         % Isolate those intervals in o a 100 x 100  holdridge grid (0.01 spacing)
         % where there is reference data, based on the holdridge x and y
         % coordinates for each GCM.
-        hold_scen_x_k = squeeze(hold_scen_x(:,:,:,:,GCM_index));
-        hold_scen_y_k = squeeze(hold_scen_y(:,:,:,:,GCM_index));
+        hold_scen_x_k = squeeze(hold_scen_x(:,:,:,GCM_index));
+        hold_scen_y_k = squeeze(hold_scen_y(:,:,:,GCM_index));
         
-        % 95% of production limit changed to 100% for future data
-        [NA, bool_GCM_scenario] = f_100x100_holdridge_box(hLand, hold_scen_x_k, hold_scen_y_k, 0.999);
+        % 95% of production limit changed to 100% for future data,
+        % climate projected on all land area
+        [~, ~, ~, bool_GCM_scenario] = f_100x100_holdridge_box(hLand, ref_data, cropland_area, hold_scen_x_k, hold_scen_y_k, 0.99999);
 
         hold_scen_x_v = hold_scen_x_k(:);
         hold_scen_y_v = hold_scen_y_k(:);
@@ -88,25 +97,22 @@ function [SCS_out, aggreg_SCS_GCMs, SCS_nores_out, region_table, aggreg_area_GCM
         % Calculate sum of gained, lost, unchanged and total potential
         % cropland area (masked to only cover total croplandarea
         % % of all crops)
-        gained_area = ((SCS_map_GCM == 0) - (SCS_map_GCM == 0) .* ref_map_baseline) .* total_cropland_mask;
-        lost_area = (ref_map_baseline .* (SCS_map_GCM == 1)) .* total_cropland_mask;
-        unchanged_area = (SCS_map_GCM == 0) .* ref_map_baseline .* total_cropland_mask;
-        total_potential_area = (SCS_map_GCM == 0) .* total_cropland_mask;
+        gained_area = ((SCS_map_GCM == 0) & (ref_mask_baseline == 0)) .* cropland_area .* total_cropland_mask;
+        lost_area = (ref_mask_baseline .* (SCS_map_GCM == 1)) .* cropland_area .* total_cropland_mask;
+        unchanged_area = (SCS_map_GCM == 0) .* ref_mask_baseline .* cropland_area .* total_cropland_mask;
+        total_potential_area = (SCS_map_GCM == 0) .* cropland_area .* total_cropland_mask;
+        baseline_area = ref_mask_baseline .* total_cropland_mask .* cropland_area;
         
-        aggreg_area_GCMs(GCM_index, 1) = areamat(gained_area, R_region);
-        aggreg_area_GCMs(GCM_index, 2) = areamat(lost_area, R_region);
-        aggreg_area_GCMs(GCM_index, 3) = areamat(unchanged_area, R_region);
-        aggreg_area_GCMs(GCM_index, 4) = areamat(total_potential_area, R_region);
-        aggreg_area_GCMs(GCM_index, 5) = areamat(ref_map_baseline .* total_cropland_mask, R_region);
-
-
+        aggreg_area_GCMs(GCM_index, 1) = sum(gained_area(:), "omitmissing");
+        aggreg_area_GCMs(GCM_index, 2) = sum(lost_area(:), "omitmissing");
+        aggreg_area_GCMs(GCM_index, 3) = sum(unchanged_area(:), "omitmissing");
+        aggreg_area_GCMs(GCM_index, 4) = sum(total_potential_area(:), "omitmissing");
+        aggreg_area_GCMs(GCM_index, 5) = sum(baseline_area(:), "omitmissing");
 
         % Add data to country level table, in the column reserved for this
         % GCM. Proportion of ref data outside of SCS.
-        region_table(:, GCM_index + 2) = accumarray(region_m(:),ref_out_GCM(:),[],@sum) ./ ref_tot_per_region;
-    
-              
-
+        region_table(:, GCM_index + 2) = accumarray(region_m(:),ref_out_GCM(:),[],@sum) ./ ref_tot_per_region;    
+%%
     end
 
     %%
@@ -121,14 +127,8 @@ function [SCS_out, aggreg_SCS_GCMs, SCS_nores_out, region_table, aggreg_area_GCM
     SCS_out(SCS_map > 3 & SCS_map <= 6) = 3;
     SCS_out(SCS_map > 6 & SCS_map <= 8) = 4;
     
-    SCS_nores_out = SCS_out;
-    %%
-    % Add 4 to the categories, if the area has low resilience
-    SCS_out(res_rast_boolean) = SCS_out(res_rast_boolean)+4;
-
     % Isolate non-land areas
     SCS_out(~hLand) = -9999;
-    SCS_nores_out(~hLand) = -9999;
 
     % remoze all zero rows from regional table
     region_table(region_table(:,1) == 0,:) = [];

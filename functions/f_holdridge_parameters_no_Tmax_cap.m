@@ -11,8 +11,9 @@ if isnan(max(data_in, [], 'all'))
     % if variables are missing, output is NaN as well
     data_out = NaN(2160,4320,4);
 else
+    %%
     % annual prec
-    data_pr_annual = single(squeeze(sum(data_in(:,:,1:12,3).*gs_filter,3, "omitnan")));
+    data_pr_annual = single(sum(data_in(:,:,:,3).*gs_filter,3, "omitnan"));
     % for areas with prec == 0
     data_pr_annual(data_pr_annual == 0) = 1;
     
@@ -25,7 +26,7 @@ else
     % monthly max temp
     data_tmax_monthly = single(data_in(:,:,1:12,2).*gs_filter);
     % monthly mean temperature
-    data_tmean_monthly = single(squeeze(nanmean(data_in(:,:,1:12,1:2).*gs_filter,4)));
+    data_tmean_monthly = single(squeeze(mean(data_in(:,:,1:12,1:2).*gs_filter,4, "omitmissing")));
     % bias correction to measured tavg
     data_tmean_monthly = bias .* data_tmean_monthly;
     
@@ -43,7 +44,7 @@ else
         tbio_boolean(:,:,i) = temp_tbio;
         clearvars temp_tbio;
     end
-    
+    %%
     % 
     % for i = 1:12
     %     temp_tbio = and(data_tmean_monthly(:,:,i) > range_min,data_tmean_monthly(:,:,i) < range_max);
@@ -52,7 +53,7 @@ else
     % end
     
     tbio_month = tbio_boolean .* data_tmean_monthly;
-    tbio = squeeze(nansum(tbio_month,3))./12;
+    tbio = squeeze(sum(tbio_month,3, "omitmissing"))./12;
     
     % PET
     % define latitude

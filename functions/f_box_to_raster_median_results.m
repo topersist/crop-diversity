@@ -1,17 +1,20 @@
 function [SCS_out, glob_sum] = f_box_to_raster_median_results(ref_data,...
     hold_scen_x, hold_scen_y, bool_future_scenario, bool_present_scenario, ...
-    hLand, res_raster)
+    hLand)
+
+    %% for testing
+    % ref_data = ref_95_prcnt_pres;
+    % hold_scen_x = hold_map_present(:,:,2);
+    % hold_scen_y = hold_map_present(:,:,3);
+    % bool_future_scenario = bool_box_present_nolim;
+    % bool_present_scenario = bool_box_present_limited;
+    % hLand = hLand;
+
+    %%
 
     % initialize return variables to NaN
     SCS_out = NaN;
     glob_sum = NaN;
-
-    %Obtain resilience quantiles, and isolate lowest resilience quantile
-    [res_cats, temp] = f_hold_rast_categories(res_raster, res_raster, 4, 4);
-    
-    % Find areas on map where resilience is i the lowest category, i.e.
-    % lowest 25% i the main analysis
-    res_rast_boolean = res_raster >= res_cats(1) & res_raster < res_cats(2);
 
     % Initialize grid intervals.
     thresholds = linspace(0.0,1.0,101);
@@ -45,24 +48,19 @@ function [SCS_out, glob_sum] = f_box_to_raster_median_results(ref_data,...
         end
     end
 %%
-    % Reshape the vectorized data to matrix format and categorize low
-    % resilience areas
+    % Reshape the vectorized data to matrix format
     SCS_out = reshape(SCS_map_v, size(hLand));
-    SCS_out(SCS_out == 1 & res_rast_boolean) = 2;
 
     % Calculate the sum an percentage of the reference data 
-    % in the resilience categories
-    %  Resilience theshold: 25%
+    % outside and within SCS
 
-    abs_res = nansum(nansum((SCS_out == 1) .*ref_data));
-    abs_nores = nansum(nansum((SCS_out == 2) .*ref_data));
+    abs_outside = sum(sum((SCS_out == 1) .*ref_data, 'omitnan'), 'omitnan');
+    abs_within = sum(sum((SCS_out == 0) .*ref_data, 'omitnan'), 'omitnan');
 
-    perc_res = abs_res / nansum(nansum(ref_data));
-    perc_nores = abs_nores / nansum(nansum(ref_data));
-
-    perc_median_outside_SCS = perc_res+perc_nores;
+    perc_outside = abs_outside / sum(sum(ref_data, 'omitnan'), 'omitnan');
+    perc_within = abs_within / sum(sum(ref_data, 'omitnan'), 'omitnan');
 
     % Finally, create a table of the global aggregates
-    glob_sum = [abs_res, abs_nores; perc_res, perc_nores];
+    glob_sum = [abs_outside, abs_within; perc_outside, perc_within];
 
 end

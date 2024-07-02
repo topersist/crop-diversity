@@ -8,8 +8,7 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 working_dir <- getwd()
 
 # list of crops
-crops <- c('bar', 'bea', 'cas', 'mai', 'mil', 'pea', 'pot', 'ri1', 'ri2', 
-           'sor', 'soy', 'swh', 'wwh')
+crops <- c('mai', 'soy')
 
 for (crop in crops) {
   

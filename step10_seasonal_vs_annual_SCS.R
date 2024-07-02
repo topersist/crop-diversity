@@ -16,8 +16,8 @@ compare_crops <- c('MAIZ', 'SOYB')
 for (crop in compare_crops) {
 
   # folders for annual and seasonal approach SCS results
-  results_path_ann <- paste0(working_dir, '/results_review_', crop, '_original/')
-  results_path_seas <- paste0(working_dir, '/results_review_', crop, '_seasonal/')
+  results_path_ann <- paste0(working_dir, '/results_240624_2020/')
+  results_path_seas <- paste0(working_dir, '/results_260624_2020_cropcal/')
   
   ## create tables comparing effects to current production at global and regional level ##
   
@@ -58,7 +58,7 @@ for (crop in compare_crops) {
   # construct comparison table for supplement
   perc_out_SCS <- merge(perc_out_SCS_ann, perc_out_SCS_seas, by = 'region', all = TRUE) %>%
     dplyr::relocate(c(ends_with('_1.5'), ends_with('_2'), ends_with('_3'), 
-                      ends_with('_4'), ends_with('_5'))) %>%
+                      ends_with('_4'))) %>%
     dplyr::relocate(region)
   
   # save as csv
@@ -78,7 +78,7 @@ for (crop in compare_crops) {
   
   # combined category mapping for each warming level
   
-  for (i in 1:5) {
+  for (i in 1:4) {
     
     layer_ann <- r_div_ann[[i]]
     layer_seas <- r_div_seas[[i]]
@@ -107,7 +107,7 @@ for (crop in compare_crops) {
       tm_raster(title = "Within and outside\nSCS in annual (ann)\nand seasonal (seas) approach",
                 breaks = c(-Inf, -9999, 1, 2, 3, 4),
                 interval.closure = "right",
-                palette = c("#f2f2f2", "#AA4499","#DDCC77","#332288", "#88CCEE"),
+                palette = c("white", "#AA4499","#DDCC77","#332288", "#88CCEE"),
                 labels = c("non-cropland", "both in", "both out", "ann in, seas out", "seas in, ann out")) +
       tm_shape(coastline)+#, projection = "ESRI:54030") +
       tm_lines(col = "black", lwd = 0.25)+

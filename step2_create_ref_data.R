@@ -5,7 +5,6 @@ library(raster)
 library(readxl)
 library(sf)
 library(tidyr)
-library(rgeos)
 library(rnaturalearth)
 
 sf::sf_use_s2(FALSE)
@@ -32,8 +31,8 @@ df_cntry_geom <- df_cntry[, c("ADM0_A3", "CONTINENT", "REGION_UN", "SUBREGION", 
 df_cntry <- st_drop_geometry(df_cntry_geom)
 
 # dissolve country geometries within regional grouping
-region_geom <- df_cntry_geom %>% 
-  group_by(REGION_WB) %>% 
+region_geom <- df_cntry_geom %>%
+  group_by(REGION_WB) %>%
   st_make_valid() %>%
   summarize()
 
@@ -65,74 +64,142 @@ r_region_id <- terra::classify(r_cntry_id, rcl_matrix)
 # save region id raster
 writeRaster(r_region_id, 'ref_data/region_id.tif', overwrite=TRUE)
 
-#### TOTAL CROPLAND MASK ####
 
-# crop data folder
-crop_folder <- 'spam2010'
+#### TOTAL CROPLAND MASK AND PHYSICAL AREA ####
 
-# read all crop data into a stack
-rast_list <- list.files(path = crop_folder, pattern='.tif$', all.files= T, full.names= T)
-crop_stack <- terra::rast(rast_list)
+years <- c('2020', '2005', '2010')
+
+for (spam_year in years) {
   
-# turn into logical raster
-total_crops <- sum(crop_stack > 0)
-
-# extend 2005 prod rasters to match the extent of other data if using spam 2005 data
-if (crop_folder == 'spam2005') {
-  total_crops <- extend(total_crops, r_cntry_id)
+  # crop data folder
+  crop_folder <- paste0('spam', spam_year)
+  
+  #### AREA
+  
+  # crop data folder
+  area_folder <- paste0('spam', spam_year, '/physical_area')
+  
+  # read all crop data into a stack
+  area_rast_list <- list.files(path = area_folder, pattern='.tif$', all.files= T, full.names= T)
+  area_stack <- terra::rast(area_rast_list)
+  
+  # sum area from all crops
+  area_crops <- sum(area_stack, na.rm = TRUE)
+  area_crops[area_crops == 0] <- NA
+  
+  # physical cell area in hectares
+  #cell_area <- cellSize(area_crops, unit = 'ha')
+  
+  # cut off crop area with physical cell area
+  #area_crops <- min(area_crops, cell_area)
+  
+  # extend 2005 prod rasters to match the extent of other data if using spam 2005 data
+  if (crop_folder == 'spam2005') {
+    area_crops <- extend(area_crops, r_cntry_id)
+  }
+  
+  
+  ### MASK
+  
+  # read all crop data into a stack
+  rast_list <- list.files(path = crop_folder, pattern='.tif$', all.files= T, full.names= T)
+  crop_stack <- terra::rast(rast_list)
+  
+  # turn into logical raster
+  total_crops <- sum(crop_stack > 0, na.rm = TRUE)
+  
+  # extend 2005 prod rasters to match the extent of other data if using spam 2005 data
+  if (crop_folder == 'spam2005') {
+    total_crops <- extend(total_crops, r_cntry_id)
+  }
+  
+  # continue turning cropland mask into logical raster
+  total_crops[total_crops > 0] <- 1
+  total_crops[total_crops <= 0] <- 0
+  total_crops[is.na(total_crops)] <- 0
+  
+  # ensure that cropland area and mask have the same extent
+  area_crops[total_crops == 0] <- NA
+  total_crops[area_crops == 0] <- 0
+  total_crops[is.na(area_crops)] <- 0 
+  
+  
+  # save total cropland mask, cropland = 1 and everything else = 0
+  writeRaster(total_crops, paste0('ref_data/total_cropland_mask_', spam_year,'.tif'), overwrite = TRUE)
+  
+  # save area raster
+  writeRaster(area_crops, paste0('ref_data/total_cropland_area_', spam_year,'.tif'), overwrite = TRUE)
+  
+  
+  if (spam_year == '2020') {  
+    
+    # Create total cropland mask and crop production data that have matching or
+    # smaller extent than crop calendar data. Only for maize and soy. 
+    
+    r_maize <- terra::rast(paste0('spam', spam_year, '/MAIZ.tif'))
+    r_soy <- terra::rast(paste0('spam', spam_year, '/SOYB.tif'))
+    
+    r_cropcal_maize <- terra::rast('crop_calendar/growing_season_filter_mai.tif') %>%
+      sum()
+    r_cropcal_soy <- terra::rast('crop_calendar/growing_season_filter_soy.tif')%>%
+      sum()
+    
+    r_cropcal_maize[r_cropcal_maize > 0] <- 1
+    r_cropcal_soy[r_cropcal_soy > 0] <- 1
+    
+    # set crop production outside crop cal extent to Na
+    r_maize[is.na(r_cropcal_maize[])] <- NA
+    r_soy[is.na(r_cropcal_soy[])] <- NA
+    
+    # set total cropland mask outside crop cal extent to zero
+    r_total_cropland_maize <- total_crops
+    r_total_cropland_soy <- total_crops
+    
+    r_total_cropland_maize[is.na(r_cropcal_maize[])] <- 0
+    r_total_cropland_soy[is.na(r_cropcal_soy[])] <- 0
+    
+    # save rasters
+    writeRaster(r_maize, paste0('spam', spam_year, '/MAIZ_cropcal.tif'), overwrite = TRUE)
+    writeRaster(r_soy, paste0('spam', spam_year, '/SOYB_cropcal.tif'), overwrite = TRUE)
+    writeRaster(r_total_cropland_maize, paste0('ref_data/total_cropland_mask_', spam_year, '_maize.tif'), overwrite = TRUE)
+    writeRaster(r_total_cropland_soy, paste0('ref_data/total_cropland_mask_', spam_year, '_soy.tif'), overwrite = TRUE)
+    
+    # Combine tomato and onion with vegetables, citrus fruit with tropical fruit,
+    # and rubber with rest of crops for comparison with SPAM 2010 and SPAM 2005 results
+    vege_rast_list <- c(paste0('spam', spam_year, '/ONIO.tif'), paste0('spam', spam_year, '/TOMA.tif'),
+                        paste0('spam', spam_year, '/VEGE.tif'))
+    fruit_rast_list <- c(paste0('spam', spam_year, '/CITR.tif'), paste0('spam', spam_year, '/TROF.tif'))
+    rest_rast_list <- c(paste0('spam', spam_year, '/RUBB.tif'), paste0('spam', spam_year, '/REST.tif'))
+    
+    r_vege <- terra::rast(vege_rast_list)
+    r_fruit <- terra::rast(fruit_rast_list)
+    r_rest <- terra::rast(rest_rast_list)
+    
+    r_vege_sum <- sum(r_vege, na.rm = TRUE)
+    r_fruit_sum <- sum(r_fruit, na.rm = TRUE)
+    r_rest_sum <- sum(r_rest, na.rm = TRUE)
+    
+    # save rasters
+    writeRaster(r_vege_sum, paste0('spam', spam_year, '/VEGE_COMB.tif'), overwrite = TRUE)
+    writeRaster(r_fruit_sum, paste0('spam', spam_year, '/TROF_COMB.tif'), overwrite = TRUE)
+    writeRaster(r_rest_sum, paste0('spam', spam_year, '/REST_COMB.tif'), overwrite = TRUE)
+    
+    
+  }
+  
 }
 
-# continue turning into logical raster
-total_crops[total_crops > 0] <- 1
-total_crops[total_crops <= 0] <- 0
-total_crops[is.na(total_crops)] <- 0
 
-# save total cropland mask, cropland = 1 and everything else = 0
-writeRaster(total_crops, 'ref_data/total_cropland_mask_2010.tif', overwrite = TRUE)
-
-#### TOTAL CROPLAND MASK AND PRODUCTION AREAS FOR SEASONAL SCS ####
-
-# Create total cropland mask and crop production data that have matching or
-# smaller extent than crop calendar data. Only for maize and soy. 
-
-r_maize <- terra::rast('spam2010/MAIZ.tif')
-r_soy <- terra::rast('spam2010/SOYB.tif')
-
-r_cropcal_maize <- terra::rast('crop_calendar/growing_season_filter_mai.tif') %>%
-  sum()
-r_cropcal_soy <- terra::rast('crop_calendar/growing_season_filter_soy.tif')%>%
-  sum()
-
-r_cropcal_maize[r_cropcal_maize > 0] <- 1
-r_cropcal_soy[r_cropcal_soy > 0] <- 1
-
-# set crop production outside crop cal extent to Na
-r_maize[is.na(r_cropcal_maize[])] <- NA
-r_soy[is.na(r_cropcal_soy[])] <- NA
-
-# set total cropland mask outside crop cal extent to zero
-r_total_cropland_maize <- total_crops
-r_total_cropland_soy <- total_crops
-
-r_total_cropland_maize[is.na(r_cropcal_maize[])] <- 0
-r_total_cropland_soy[is.na(r_cropcal_soy[])] <- 0
-
-# save rasters
-writeRaster(r_maize, 'spam2010/MAIZ_cropcal.tif', overwrite = TRUE)
-writeRaster(r_soy, 'spam2010/SOYB_cropcal.tif', overwrite = TRUE)
-writeRaster(r_total_cropland_maize, 'ref_data/total_cropland_mask_2010_maize.tif', overwrite = TRUE)
-writeRaster(r_total_cropland_soy, 'ref_data/total_cropland_mask_2010_soy.tif', overwrite = TRUE)
-
-## LATITUDE ZONES POLYGONS ##
+#### LATITUDE ZONES POLYGONS ####
 
 # initialize cell values from y axis
 r_lats <- total_crops
 r_lats <- init(r_lats, fun='y')
 
 # reclassify to latitude categories
-rcl_mat <- matrix(c(-90,-40,-70,
-                    -40,40,0,
-                    40,90,70), nrow = 3, byrow = TRUE)
+rcl_mat <- matrix(c(-90,-30,-70,
+                    -30,30,0,
+                    30,90,70), nrow = 3, byrow = TRUE)
 
 r_lat_zones <- classify(r_lats, rcl_mat)
 df_lat_zones <- st_as_sf(terra::as.polygons(r_lat_zones))
@@ -161,4 +228,5 @@ df_dem_zones <- st_as_sf(terra::as.polygons(r_dem_zones))
 writeRaster(r_dem_5min, 'ref_data/dem_5min.tif', overwrite = TRUE)
 writeRaster(r_dem_zones, 'ref_data/dem_zones.tif', overwrite = TRUE)
 write_sf(df_dem_zones, 'ref_data/dem_zone_geometries.shp')
+
 

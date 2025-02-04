@@ -1,4 +1,4 @@
-## Code from manuscript: 'Diverging impacts of climate change on the global potential diversity of food crops'
+## Code from manuscript: 'Climate change threatens crop diversity at low latitudes'
 #### Sara Heikonen, Matias Heino, Mika Jalava, Stefan Siebert, Daniel Viviroli, Matti Kummu
 
 The ananlysis is composed of five MATLAB scripts and five R scripts:

@@ -8,7 +8,7 @@ library(scico)
 library(tmap)
 library(terra)
 library(matrixStats)
-library(raveio)
+library(rhdf5)
 library(RColorBrewer)
 library(rnaturalearth)
 library(sf)
@@ -18,8 +18,8 @@ library(ggalt)
 
 #### FUNCTIONS SECTION BEGINS, do not modify ####
 
-# bar plots of % outside SCS at five global warming levels
-plot_bar <- function(table_long, group, results_path, pal, aggreg = '', food_list, area) {
+# bar plots of % outside SCS at four global warming levels
+plot_bar <- function(table_long, table_long_GCM, group, results_path, pal, aggreg = '', food_list, area) {
   
   # plot labels
   lbl_ctgs <- unique(table_long$CROP)
@@ -60,13 +60,20 @@ plot_bar <- function(table_long, group, results_path, pal, aggreg = '', food_lis
   SCS_table_long_desc <- table_long %>%
     mutate(warming = as.character(warming))
   
+  SCS_table_long_GCM <- table_long_GCM %>%
+    mutate(warming = as.character(warming))
+  
+  
   plt_out_SCS_group_col <- ggplot(data = SCS_table_long_desc,
                                   aes(x = warming, y = perc_out_SCS,
                                       group=CROP)) + 
     geom_col(data = SCS_table_long_desc, aes(x = warming, y = perc_out_SCS,
                  fill= CROP), position = 'dodge') +
+    geom_point(data = SCS_table_long_GCM, aes(x = warming, y = perc_out_SCS,
+                                              group = CROP, alpha = 0.5),
+               position = position_dodge(width = 0.9), color = 'black') +
     geom_errorbar(data = SCS_table_long_desc, aes(x = warming,
-                      ymin=limit_low, ymax=limit_high),
+                                                  ymin=limit_low, ymax=limit_high),
                   position = position_dodge(width=0.9),
                   width = 0.25) +
     scale_fill_manual(name = paste(legend_grouping, '(median)', sep = " "),
@@ -94,7 +101,7 @@ plot_bar <- function(table_long, group, results_path, pal, aggreg = '', food_lis
 }
 
 # bar plots of gained and lost potential cropland area at four global warming levels
-plot_area_change <- function(table_long, group, results_path, pal, aggreg = '', food_list, area) {
+plot_area_change <- function(table_long, table_long_GCM, group, results_path, pal, aggreg = '', food_list, area) {
   
   # plot labels
   lbl_ctgs <- unique(table_long$CROP)
@@ -134,6 +141,7 @@ plot_area_change <- function(table_long, group, results_path, pal, aggreg = '', 
   
   # data adjustment for plot aesthetics
   area_table_long_desc <- table_long %>%
+    filter(change_dir != "total") %>%
     mutate(warming = as.character(warming),
            perc_change_area = ifelse(change_dir == "lost", -perc_change_area, perc_change_area),
            limit_low = ifelse(change_dir == "lost", -limit_low, limit_low),
@@ -143,8 +151,23 @@ plot_area_change <- function(table_long, group, results_path, pal, aggreg = '', 
     filter(change_dir == 'total') %>%
     mutate(warming = as.character(warming))
   
-  min_low <- min(area_table_long_desc$limit_high)
-  max_high <- max(area_table_long_desc$limit_high)
+  area_table_long_GCM_desc <- table_long_GCM %>%
+    filter(change_dir != "total") %>%
+    mutate(warming = as.character(warming),
+           perc_change_area = ifelse(change_dir == "lost", -perc_change_area, perc_change_area))
+  
+  area_table_total_GCM <- table_long_GCM %>%
+    filter(change_dir == 'total') %>%
+    mutate(warming = as.character(warming))
+  
+  min_low <- min(area_table_long_GCM_desc$perc_change_area) - 0.1
+  if (min_low < -100) {
+    min_low <- -100
+  }
+  max_high <- max(area_table_long_GCM_desc$perc_change_area) + 0.1
+  if (max_high > 100) {
+    max_high <- 100
+  }
   
   # create plot
   plt_area_change<- ggplot(data = area_table_long_desc,
@@ -152,6 +175,9 @@ plot_area_change <- function(table_long, group, results_path, pal, aggreg = '', 
                                       group=CROP)) + 
     geom_col(data = area_table_long_desc, aes(x = warming, y = perc_change_area,
                                              fill= CROP), position = 'dodge') +
+    geom_point(data = area_table_long_GCM_desc, aes(x = warming, y = perc_change_area,
+                                              group = CROP, alpha = 0.5),
+               position = position_dodge(width = 0.9), color = "black") +
     geom_errorbar(data = area_table_long_desc, aes(x = warming,
                                                   ymin=limit_low, ymax=limit_high,
                                                   group = CROP),
@@ -160,6 +186,9 @@ plot_area_change <- function(table_long, group, results_path, pal, aggreg = '', 
     geom_point(data = area_table_total, aes(x = warming, y = perc_change_area,
                                             group=CROP), 
                position = position_dodge(width=0.9), shape = 18, color = "white")+
+    geom_point(data = area_table_total_GCM, aes(x = warming, y = perc_change_area,
+                                                group = CROP, alpha = 0.5),
+               position = position_dodge(width = 0.9),  color = "white", shape = 1) +
     geom_errorbar(data = area_table_total, aes(x = warming,
                                                ymin=limit_low, ymax=limit_high,
                                                group = CROP),
@@ -171,7 +200,7 @@ plot_area_change <- function(table_long, group, results_path, pal, aggreg = '', 
     scale_x_discrete(expand = c(0,0),
                      labels = c(c("1.5 C","2 C", "3 C", "4 C"))) +
     scale_y_continuous(expand = c(0,0),
-                       limits = c(-80, 40)) + 
+                       limits = c(-80, 30)) + 
     ylab("Change in cropland area within SCS compared to baseline (%)") +
     xlab("Global warming") +
     ggtitle(paste(group, area, sep = " ")) + 
@@ -248,13 +277,14 @@ plot_diversity <- function(r_input, group, ncrops, temp, results_path, coastline
 plot_total_area_change <- function(table_area, group, results_path, aggreg = '') {
   
   
-  # fix order of crops based on ascending order in the 1.5 C scenario,
+  # fix order of crops based on ascending order in the 4 C scenario,
   # filter only total change
   if (! group %in% c('FOOD', 'NONFOOD')) {
     table_area <- table_area %>%
       filter(change_dir == 'total') %>%
       arrange(`4`) %>%
       mutate(CROP = paste0(c(letters[1:nrow(.)]), '_', CROP))
+    
   } else {
     prefixes <- c(letters, 'zw', 'zx', 'zy', 'zz')
     
@@ -279,6 +309,7 @@ plot_total_area_change <- function(table_area, group, results_path, aggreg = '')
                                       aes(x = CROP, y = perc_change_area,
                                           group = warming)) + 
     geom_col(aes(fill = warming), position = position_identity(), width = 0.9) +
+    
     scale_y_continuous(limits = c(-80, 30), expand = c(0,0))+
     scale_x_discrete(expand = c(0,0)) +
     scale_fill_manual(values = scico(n = 4, palette = 'lajolla', begin = 0.15, end = 0.85, direction = 1)) +
@@ -631,9 +662,8 @@ plot_ternary <- function(data_folder, spam_year, crop_name) {
 # Crop specific SCS map
 plot_SCS_map <- function(results_path, crop, spam_year, coastline, r_land, tocrs) {
   
-  # read SCS map data
+  # SCS map data path
   result_path <- paste(results_path, 'matlab/', crop, '/main_results_div', crop, spam_year, '.mat', sep="")
-  data <- read_mat(result_path, ram=TRUE)
   
   # initialize crop specific SCS rasters
   r_SCS_tot_baseline <- rast(res=c(1/12, 1/12), names = c(crop))
@@ -643,11 +673,11 @@ plot_SCS_map <- function(results_path, crop, spam_year, coastline, r_land, tocrs
   r_SCS_tot_4wp <- rast(res=c(1/12, 1/12), names = c(crop))
   
   # fill SCS rasters with crop specific data
-  values(r_SCS_tot_baseline) <- data$SCS_out_total_baseline
-  values(r_SCS_tot_15wp) <- data$SCS_out_total_15wp
-  values(r_SCS_tot_2wp) <- data$SCS_out_total_2wp
-  values(r_SCS_tot_3wp) <- data$SCS_out_total_3wp
-  values(r_SCS_tot_4wp) <- data$SCS_out_total_4wp
+  values(r_SCS_tot_baseline) <- h5read(result_path, name = '/SCS_out_total_baseline')
+  values(r_SCS_tot_15wp) <- h5read(result_path, name = '/SCS_out_total_15wp')
+  values(r_SCS_tot_2wp) <- h5read(result_path, name = '/SCS_out_total_2wp')
+  values(r_SCS_tot_3wp) <- h5read(result_path, name = '/SCS_out_total_3wp')
+  values(r_SCS_tot_4wp) <- h5read(result_path, name = '/SCS_out_total_4wp')
   
   # reclassify to show whether most models indicate within or outside SCS.
   # 0 = inside, 1 = outside, -9999 = non-cropland
@@ -874,13 +904,13 @@ table_div_change_groups <- function(results_path, group_codes) {
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 working_dir <- getwd()
 
-results_path <- paste0(working_dir, '/results_240624_2020_comb/')
+results_path <- paste0(working_dir, '/results_240624_2020/')
 
 # Crop data year? ('2005', '2010', or '2020')
 spam_year <- '2020'
 
 # Use 2005/2010 crop types for the year 2020? (Supplementary analysis)
-comb_2020 = TRUE
+comb_2020 = FALSE
 
 ## do not modify from here on ##
 
@@ -906,9 +936,11 @@ barplot_pal <- c('#D59977','#3C6691', '#DDCC77', '#44AA99', '#88CCEE', '#CC6677'
 names(barplot_pal) <- c('CEREALS1', 'FRUIT AND VEG1', group_list, 'TOTAL')
 
 # load land mask, region raster, and coastline
-land_data <- read_mat('holdridge_data/hLand.mat')
+land_data <- h5read('holdridge_data/hLand.mat', name = 'hLand')
+land_data_int <- mapply(land_data, FUN=as.integer)
+land_mat <- matrix(data=land_data_int, ncol=4320, nrow=2160)
 r_land <- rast(res=c(1/12, 1/12))
-values(r_land) <- land_data$hLand
+terra::values(r_land) <- (land_mat)
 
 r_region <- rast('ref_data/region_id.tif')
 r_region[r_land == 0] <- NA
@@ -917,13 +949,30 @@ r_region[r_land == 0] <- NA
 #coastline <- read_sf('ref_data/ne_50m_coastline.shp')
 
 coastline <- ne_download(scale = 50, type = "coastline",
-                         category = "physical", returnclass = "sf")
+                          category = "physical", returnclass = "sf")
 
 # make background map for fig 2 and fig 6
 plot_background(coastline, r_region, results_path)
 
 # make holdridge diagrams for wheat (Extended data figure 1)
 plot_ternary(results_path, spam_year, 'WHEA')
+
+# make SCS maps for all crops / only for wheat
+if (spam_year == '2020' & !comb_2020) {
+  crop_list <- c('WHEA','RICE','MAIZ','BARL','MILL','PMIL','SORG','OCER','POTA','SWPO',
+                 'YAMS','CASS','ORTS','BEAN','CHIC','COWP','PIGE','LENT','OPUL',
+                 'SOYB','GROU','CNUT','BANA','PLNT','CITR','TROF','TEMF','TOMA',
+                 'ONIO','VEGE')
+} else {
+  crop_list <- c('WHEA')
+}
+
+
+for (crop in crop_list) {
+
+  plot_SCS_map(results_path, crop, spam_year, coastline, r_land, tocrs = "+proj=robin +over")
+
+}
 
 # make SCS maps for wheat
 plot_SCS_map(results_path, 'WHEA', spam_year, coastline, r_land, tocrs = "+proj=robin +over")
@@ -956,7 +1005,7 @@ for (grouping in groupings){
   for (group in groups) {
     
     ## first scenario to push a cell outside SCS
-    
+
     if (group %in% c('FOOD', 'NONFOOD')) {
 
       map_pattern <- paste('first_scen_out_SCS_', group, '_', sep = '')
@@ -976,7 +1025,7 @@ for (grouping in groupings){
                                          '.csv', sep = "")
       first_scen_out_table <- read.csv(first_scen_out_table_path) %>%
         drop_na
-      
+
       first_scen_out_table_cum <- first_scen_out_table %>%
         mutate(all_in = X0,
                cum_1.5 = X1.5,
@@ -993,7 +1042,7 @@ for (grouping in groupings){
         filter(out_limit == 0.25) %>%
         rename_with(~ gsub("X", "", .x, fixed = TRUE)) %>%
         dplyr::select(-out_limit)
-      
+
       colnames(first_scen_out_25) <- c('region', 'a_0', 'e_1.5', 'd_2', 'c_3', 'b_4')
 
       # transform into long format for plotting
@@ -1013,10 +1062,13 @@ for (grouping in groupings){
     ## % out SCS bar plots and lost vs gained potential area bar plots##
 
     table_path <- paste(results_path, 'tables/', group, '/SCS_out_perc_', group, '.csv', sep="")
-    table_regional_path <- paste(results_path, 'tables/', group, '/SCS_out_perc_regional', group, '.csv', sep="")
+    table_regional_path <- paste(results_path, 'tables/', group, '/SCS_out_perc_regional_', group, '.csv', sep="")
+    table_GCM_path <- paste(results_path, 'tables/', group, '/SCS_out_perc_GCMs_', group, '.csv', sep="")
+    table_regional_GCM_path <- paste(results_path, 'tables/', group, '/SCS_out_perc_regional_GCMs_', group, '.csv', sep="")
 
     table_area_path <- paste(results_path, 'tables/', group, '/SCS_area_change_perc_', group, '.csv', sep="")
-
+    table_area_GCM_path <- paste(results_path, 'tables/', group, '/SCS_area_change_perc_GCMs_', group, '.csv', sep="")
+    
     # percentage of current production table in long format,
     # crop specific within crop groups.
 
@@ -1026,14 +1078,25 @@ for (grouping in groupings){
     SCS_table_regional <- read.csv(table_regional_path)
     colnames(SCS_table_regional) <- sub("X", "", colnames(SCS_table_regional))
     names(SCS_table_regional)[2] <- "subregion"
-
-    regions <- unique(SCS_table_regional$subregion)
+    
+    SCS_table_GCM <- read.csv(table_GCM_path)
+    colnames(SCS_table_GCM) <- sub("X", "", colnames(SCS_table_GCM))
+    
+    SCS_table_regional_GCM <- read.csv(table_regional_GCM_path) %>%
+      relocate(REGION_WB, .before = CROP) %>%
+      relocate(region_code, .before = REGION_WB)
+    colnames(SCS_table_regional_GCM) <- sub("X", "", colnames(SCS_table_regional_GCM))
+    names(SCS_table_regional_GCM)[2] <- "subregion"
 
     area_table <- read.csv(table_area_path) %>%
       left_join(group_codes, by = c('CROP' = 'spamcrop'))
-
     colnames(area_table) <- sub("X", "", colnames(area_table))
+    
+    area_table_GCM <- read.csv(table_area_GCM_path) %>%
+      left_join(group_codes, by = c('CROP' = 'spamcrop'))
+    colnames(area_table_GCM) <- sub("X", "", colnames(area_table_GCM))
 
+    regions <- unique(SCS_table_regional$subregion)
     ncrops <- length(unique(SCS_table$CROP))
 
 
@@ -1081,17 +1144,33 @@ for (grouping in groupings){
         merge(SCS_table_low, by=c("CROP","warming")) %>%
         merge(SCS_table_high, by=c("CROP","warming")) %>%
         mutate(CROP = fct_reorder(CROP, perc_out_SCS, .desc=FALSE))
+      
+      # transform GCM level perc out to long format
+      SCS_table_out_GCM <- SCS_table_GCM %>%
+        dplyr::select(-6) %>%
+        pivot_longer(cols=(-c(CROP, GCM)),
+                     names_to = "warming",
+                     values_to = "perc_out_SCS") %>%
+        mutate(warming = as.numeric(warming),
+               perc_out_SCS = perc_out_SCS * 100) %>%
+        group_by(CROP, warming) %>%
+        mutate(median = median(perc_out_SCS, na.rm = T)) %>%
+        ungroup() %>%
+        mutate(CROP = fct_reorder(CROP, median, .desc=FALSE))
+      
+      plot_bar(SCS_table_long, SCS_table_out_GCM, group, results_path, barplot_pal, '', food_list, 'global')
 
-      plot_bar(SCS_table_long, group, results_path, barplot_pal, '', food_list, 'global')
-
-      # save plot table as csv
-      write.csv(SCS_table_long, paste0(results_path, 'tables/', group, '/perc_out_SCS_barplot', group, '.csv', sep=""))
-
+      # save plot tables as csv
+      write.csv(SCS_table_long, paste0(results_path, 'tables/', group, '/perc_out_SCS_barplot_', group, '.csv', sep=""))
+      write.csv(SCS_table_out_GCM, paste0(results_path, 'tables/', group, '/perc_out_SCS_barplot_GCM_', group, '.csv', sep=""))
+      
+      
       # lost & gained cropland area
-
-      # experimental plots
+      
+      # total change in all scenarios for individual crops
       plot_total_area_change(area_table, group, results_path, aggreg = '')
-
+      
+      # lost, gained and total change in crop groups
       # transform area change to long format
       area_change_table <- area_table %>%
         dplyr::select(CROP, `1.5`, `2`, `3`, `4`, change_dir, fao_group) %>%
@@ -1125,10 +1204,19 @@ for (grouping in groupings){
         merge(area_change_table_low, by=c("CROP","warming", "change_dir", "fao_group")) %>%
         merge(area_change_table_high, by=c("CROP","warming", "change_dir", "fao_group"))
       
-      # save table as csv to help plot interpretation
+      # transform GCM data into long format
+      area_table_long_GCM <- area_table_GCM %>%
+        dplyr::select(CROP, `1.5`, `2`, `3`, `4`, change_dir, fao_group, GCM) %>%
+        pivot_longer(cols=-c(CROP, change_dir, fao_group, GCM),
+                     names_to = "warming",
+                     values_to = "perc_change_area") %>%
+        mutate(warming = as.numeric(warming))
+      
+      # save tables as csv to help plot interpretation
       write.csv(area_table_long, paste0(results_path, 'tables/', group, '/area_change_barplot_table', group, '.csv', sep=""))
-
-      plot_area_change(area_table_long, group, results_path, barplot_pal, '', food_list, 'global')
+      write.csv(area_table_long_GCM, paste0(results_path, 'tables/', group, '/area_change_barplot_table_GCM_', group, '.csv', sep=""))
+      
+      plot_area_change(area_table_long, area_table_long_GCM, group, results_path, barplot_pal, '', food_list, 'global')
 
       ## REGIONAL AGGREGATE PLOTS
 
@@ -1174,13 +1262,34 @@ for (grouping in groupings){
         SCS_table_long <- SCS_table_out %>%
           merge(SCS_table_low, by=c("CROP","warming")) %>%
           merge(SCS_table_high, by=c("CROP","warming")) %>%
-          mutate(CROP = fct_reorder(CROP, perc_out_SCS, .desc=TRUE))
+          mutate(CROP = fct_reorder(CROP, perc_out_SCS, .desc=FALSE))
+        
+        # GCM data formatting
+        # select region specific data from regional data frame
+        SCS_table_region_spec_GCM <- SCS_table_regional_GCM %>%
+          filter(subregion == region) %>%
+          dplyr::select(-c(subregion, region_code))
+        
+        # transform perc out to long format
+        SCS_table_out_GCM <- SCS_table_region_spec_GCM %>%
+          dplyr::select(-6) %>%
+          pivot_longer(cols=(-c(CROP, GCM)),
+                       names_to = "warming",
+                       values_to = "perc_out_SCS") %>%
+          mutate(warming = as.numeric(warming),
+                 perc_out_SCS = perc_out_SCS * 100) %>%
+          filter(!is.na(perc_out_SCS)) %>%
+          group_by(CROP, warming) %>%
+          mutate(median = median(perc_out_SCS, na.rm = T)) %>%
+          ungroup() %>%
+          mutate(CROP = fct_reorder(CROP, median, .desc=FALSE))
 
-        plot_bar(SCS_table_long, group, results_path, barplot_pal, '', food_list, region)
+        plot_bar(SCS_table_long, SCS_table_out_GCM, group, results_path, barplot_pal, '', food_list, region)
         
         # save plot table as csv
-        write.csv(SCS_table_long, paste0(results_path, 'tables/', group, '/perc_out_SCS_barplot', group, '_', region, '.csv', sep=""))
-
+        write.csv(SCS_table_long, paste0(results_path, 'tables/', group, '/perc_out_SCS_barplot_', group, '_', region, '.csv', sep=""))
+        write.csv(SCS_table_out_GCM, paste0(results_path, 'tables/', group, '/perc_out_SCS_barplot_GCM_', group, '_', region, '.csv', sep=""))
+        
       }
 
 
@@ -1246,15 +1355,42 @@ for (grouping in groupings){
       group_perc_table_long <- group_perc_out_table_long %>%
         merge(group_perc_low_table_long, by=c("CROP","warming")) %>%
         merge(group_perc_high_table_long, by=c("CROP","warming"))
+      
+      # get GCM specific data
+      # add column for total prod in reference conditions
+      SCS_table_prod_GCM <- SCS_table_GCM %>%
+        mutate_at(vars(`1.5`:`4`), ~ .x * ref_tot) %>%
+        left_join(group_codes, by= c("CROP" = "spamcrop")) %>%
+        dplyr::select(-9)
+      
+      # summarize total prod within each crop group & for each GCM
+      SCS_table_prod_sums_GCM <- SCS_table_prod_GCM %>%
+        group_by(fao_group, GCM) %>%
+        summarise_at(vars(`1.5`:ref_tot), sum) %>%
+        ungroup()
+      
+      # transform into percentage
+      group_perc_table_GCM <- SCS_table_prod_sums_GCM %>%
+        mutate_at(vars(`1.5`:`4`), ~ .x / ref_tot) %>%
+        rename(CROP = fao_group) %>%
+        dplyr::select(-7)
+      
+      # transform perc out to long format
+      group_perc_table_GCM_long <- group_perc_table_GCM %>%
+        pivot_longer(cols=-c(CROP, GCM),
+                     names_to = "warming",
+                     values_to = "perc_out_SCS") %>%
+        mutate(warming = as.numeric(warming),
+               perc_out_SCS = perc_out_SCS * 100)
 
-      plot_bar(group_perc_table_long, group, results_path, barplot_pal, aggreg = '_aggreg', food_list, 'global')
+      plot_bar(group_perc_table_long, group_perc_table_GCM_long, group, results_path, barplot_pal, aggreg = '_aggreg', food_list, 'global')
 
-      # save plot table as csv
-      write.csv(group_perc_table_long, paste0(results_path, 'tables/', group, '/perc_out_SCS_barplot', group, '.csv', sep=""))
+      # save plot tables as csv
+      write.csv(group_perc_table_long, paste0(results_path, 'tables/', group, '/perc_out_SCS_barplot_', group, '.csv', sep=""))
+      write.csv(group_perc_table_GCM_long, paste0(results_path, 'tables/', group, '/perc_out_SCS_barplot_GCMs_', group, '.csv', sep=""))
 
       # lost & gained cropland area
 
-      # experimental plots
       plot_total_area_change(area_table, group, results_path, aggreg = '')
 
       # transform perc area to total area
@@ -1273,8 +1409,24 @@ for (grouping in groupings){
       group_perc_area_table <- area_table_tot_sums %>%
         mutate_at(vars(`1.5`:`4_high`), ~ .x / baseline_area * 100) %>%
         mutate(CROP = fao_group)
+      
+      # same processing for GCM data
+      area_table_tot_GCM <- area_table_GCM %>%
+        relocate(change_dir, .after = baseline_area) %>%
+        mutate_at(vars(`1.5`:`4`), ~ .x / 100 * baseline_area) %>%
+        dplyr::select(-10)
+      
+      # summarize total prod within each crop group
+      area_table_tot_sums_GCM <- area_table_tot_GCM %>%
+        group_by(fao_group, change_dir, GCM) %>%
+        summarise_at(vars(`1.5`:baseline_area), sum) %>%
+        ungroup()
+      
+      # transform back into percentage
+      group_perc_area_table_GCM <- area_table_tot_sums_GCM %>%
+        mutate_at(vars(`1.5`:`4`), ~ .x / baseline_area * 100) %>%
+        mutate(CROP = fao_group)
 
-      # experimental plots
       plot_total_area_change(group_perc_area_table, group, results_path, aggreg = '_aggreg')
 
       # transform area change to long format
@@ -1311,23 +1463,41 @@ for (grouping in groupings){
         merge(group_area_change_table_high, by=c("CROP","warming", "change_dir"))# %>%
         #mutate(CROP = fct_reorder(CROP, perc_change_area, .desc=FALSE))
       
+      # transform GCM data into long format
+      group_area_table_long_GCM <- group_perc_area_table_GCM %>%
+        dplyr::select(CROP, `1.5`, `2`, `3`, `4`, change_dir, fao_group, GCM) %>%
+        pivot_longer(cols=-c(CROP, change_dir, fao_group, GCM),
+                     names_to = "warming",
+                     values_to = "perc_change_area") %>%
+        mutate(warming = as.numeric(warming))
+      
       # save table as csv to help plot interpretation
       write.csv(group_area_table_long, paste0(results_path, 'tables/', group, '/area_change_barplot_table', group, '.csv', sep=""))
-
-      plot_area_change(group_area_table_long, group, results_path, barplot_pal, aggreg = '_aggreg', food_list, 'global')
+      write.csv(group_area_table_long_GCM, paste0(results_path, 'tables/', group, '/area_change_barplot_table_GCM_', group, '.csv', sep=""))
+        
+      plot_area_change(group_area_table_long, group_area_table_long_GCM, group, results_path, barplot_pal, aggreg = '_aggreg', food_list, 'global')
 
 
       ## REGIONAL AGGREGATE PLOTS ##
       
       # read table showing % total production in region outside the SCS.
       # transform to percentage and select only median results
-      table_all_prod_reg_path <- table_regional_path <- paste(results_path, 'tables/', group, '/SCS_out_perc_all_crops_regional', group, '.csv', sep="")
+      table_all_prod_reg_path <- table_regional_path <- paste(results_path, 'tables/', group, '/SCS_out_perc_all_crops_regional_', group, '.csv', sep="")
       table_all_prod_reg <- read.csv(table_all_prod_reg_path)%>%
         rename(subregion = REGION_WB) %>%
         mutate_at(vars(`X1.5`:`X4_high`), ~.x * 100) %>%
         dplyr::select(-ref_tot)
       
+      # GCM results, transform to percentage
+      table_all_prod_reg_GCM_path <- table_regional_GCM_path <- paste(results_path, 'tables/', group, '/SCS_out_perc_all_crops_regional_GCMs_', group, '.csv', sep="")
+      table_all_prod_reg_GCM <- read.csv(table_all_prod_reg_GCM_path)%>%
+        rename(subregion = REGION_WB) %>%
+        mutate_at(vars(`X1.5`:`X4`), ~.x * 100) %>%
+        dplyr::select(-ref_tot)
+      
+      
       colnames(table_all_prod_reg) <- sub("X", "", colnames(table_all_prod_reg))
+      colnames(table_all_prod_reg_GCM) <- sub("X", "", colnames(table_all_prod_reg_GCM))
       
 
       for (region in regions){
@@ -1398,12 +1568,55 @@ for (grouping in groupings){
           merge(group_perc_low_table_long, by=c("CROP","warming")) %>%
           merge(group_perc_high_table_long, by=c("CROP","warming"))# %>%
           #mutate(CROP = fct_reorder(CROP, perc_out_SCS, .desc=TRUE))
+        
+        # GCM data
+        # select region specific data from regional data frame
+        SCS_table_region_spec_GCM <- SCS_table_regional_GCM %>%
+          filter(subregion == region) %>%
+          dplyr::select(-c(subregion, region_code))
+        
+        # select region specific data from all production summary data frame
+        table_all_prod_reg_spec_GCM <- table_all_prod_reg_GCM %>%
+          filter(subregion == region) %>%
+          mutate(CROP = 'TOTAL', .before = `1.5`) %>%
+          dplyr::select(-subregion)
+        
+        # add column for total prod in reference conditions
+        SCS_table_prod_GCM <- SCS_table_region_spec_GCM %>%
+          mutate_at(vars(`1.5`:`4`), ~ .x * ref_tot) %>%
+          left_join(group_codes, by= c("CROP" = "spamcrop")) %>%
+          dplyr::select(-9)
+        
+        # summarize total prod within each crop group & GCM
+        SCS_table_prod_sums_GCM <- SCS_table_prod_GCM %>%
+          group_by(fao_group, GCM) %>%
+          summarise_at(vars(`1.5`:ref_tot), sum, na.rm = T) %>%
+          ungroup()
+        
+        # transform into percentage
+        group_perc_table_GCM <- SCS_table_prod_sums_GCM %>%
+          mutate_at(vars(`1.5`:`4`), ~ .x / ref_tot *100) %>%
+          rename(CROP = fao_group) %>%
+          dplyr::select(-7)
+        
+        # join with data from all crops summary data frame
+        group_perc_table_all_GCM <- group_perc_table_GCM %>%
+          bind_rows(table_all_prod_reg_spec_GCM)
+        
+        # transform perc out to long format
+        group_perc_out_table_long_GCM <- group_perc_table_all_GCM %>%
+          pivot_longer(cols=-c(CROP,GCM),
+                       names_to = "warming",
+                       values_to = "perc_out_SCS") %>%
+          mutate(warming = as.numeric(warming))
+        
 
-        plot_bar(group_perc_table_long, group, results_path, barplot_pal, aggreg = '_aggreg', food_list, region)
+        plot_bar(group_perc_table_long, group_perc_out_table_long_GCM, group, results_path, barplot_pal, aggreg = '_aggreg', food_list, region)
 
-        # save barplot table as csv
-        write.csv(group_perc_table_long, paste0(results_path, 'tables/', group, '/perc_out_SCS_barplot', group, '_', region, '.csv', sep=""))
-
+        # save barplot tables as csv
+        write.csv(group_perc_table_long, paste0(results_path, 'tables/', group, '/perc_out_SCS_barplot_', group, '_', region, '.csv', sep=""))
+        write.csv(group_perc_out_table_long_GCM, paste0(results_path, 'tables/', group, '/perc_out_SCS_GCM_barplot_', group, '_', region, '.csv', sep=""))
+        
 
 
       }
@@ -1416,7 +1629,7 @@ for (grouping in groupings){
 
     div_total_rast_path <- paste(results_path, group, '/in_div_tot_', group, '.tiff', sep="")
     r_tot_div_change <- rast(div_total_rast_path)
-    
+
     if (group == 'FOOD') {
       ncrops = group_codes %>%
         filter(food == '1') %>%
@@ -1459,7 +1672,7 @@ for (grouping in groupings){
 
       plot_total_diversity(layer_tot, group, ncrops, temp, results_path, coastline, pal = 'bamako', tocrs = "+proj=robin +over", r_land)
     }
-     
+
     ## regional/zonal area in diversity change categories
 
     # read data, geographical regions, elevation zones and latitude zones
@@ -1467,31 +1680,31 @@ for (grouping in groupings){
     reg_area_change <- read.csv(reg_area_change_path) %>%
       filter(region != 'Antarctica') %>%
       dplyr::select(-c(tot_area_region, perc_area_region))
-    
-    
+
+
     if (spam_year == '2020' & !comb_2020) {
 
       lat_area_change_path <- paste(results_path,'tables/', group,  '/div_change_lat_zones_area_cat_', group, '.csv', sep="")
       lat_area_change <- read.csv(lat_area_change_path) %>%
         filter(lat_region != 'Global') %>%
         dplyr::select(-c(tot_area_region, perc_area_region))
-  
+
       elev_area_change_path <- paste(results_path,'tables/', group,  '/div_change_elev_zones_area_cat_', group, '.csv', sep="")
       elev_area_change <- read.csv(elev_area_change_path) %>%
         filter(elev_region != 'Global') %>%
         dplyr::select(-c(tot_area_region, perc_area_region)) %>%
         mutate(elev_region = rep(c("less_than_800", "800_to_1500", "1500_to_2500", "more_than_2500"), 4))
-      
+
     }
 
-      
+
     col_names <- c("region", "scenario", "l_-100", "k_-99.99 to -75", "j_-75 to -50", "i_-50 to -25", "h_-25 to 0", "g_no change",
                       "f_0 to +25", "e_+25 to +50", "d_+50 to +75", "c_+75 to +100",
                       "b_cropland with emerging climatic potential", "a_marginal in baseline, outside SCS in scen")
-    
+
     colnames(reg_area_change) <- col_names
-    
-    
+
+
     if (spam_year == '2020' & !comb_2020) {
       colnames(lat_area_change) <- col_names
       colnames(elev_area_change) <- col_names
@@ -1513,15 +1726,15 @@ for (grouping in groupings){
       plot_regional_area_change_cats(reg_area_change_long, group, results_path, reg)
 
     }
-    
-    
+
+
     if (spam_year == '2020' & !comb_2020) {
 
       lat_zones <- unique(lat_area_change$region)
-  
+
       # loop through latitude zones
       for (lat_zone in lat_zones) {
-  
+
         # transform into long format for plotting
         lat_area_change_long <- lat_area_change %>%
           filter(region == lat_zone) %>%
@@ -1529,16 +1742,16 @@ for (grouping in groupings){
                        names_to = 'change_cat',
                        values_to = 'perc_area_in_cat') %>%
           mutate(perc_area_in_cat = perc_area_in_cat * 100)
-  
+
         plot_regional_area_change_cats(lat_area_change_long, group, results_path, paste0('lat_zone_',lat_zone))
-  
+
       }
-  
+
       elev_zones <- unique(elev_area_change$region)
-  
+
       # loop through elevation zones
       for (elev_zone in elev_zones) {
-  
+
         # transform into long format for plotting
         elev_area_change_long <- elev_area_change %>%
           filter(region == elev_zone) %>%
@@ -1546,11 +1759,11 @@ for (grouping in groupings){
                        names_to = 'change_cat',
                        values_to = 'perc_area_in_cat') %>%
           mutate(perc_area_in_cat = perc_area_in_cat * 100)
-  
+
         plot_regional_area_change_cats(elev_area_change_long, group, results_path, paste0('elev_zone_',elev_zone))
-  
+
       }
-    
+
     }
 
    }

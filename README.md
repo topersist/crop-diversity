@@ -47,17 +47,21 @@ Used MATLAB version: 9.14.0.2239454 (R2023a)
 Used external MATLAB packages and their versions:
 cbarrow 1.1.0.0, crameri 1.08, export_fig 3.27, wprctile 1.0.0.0
 
-Used R version: 4.3.1
+Used R version: 4.4.1
 
 Used R base packages: stats, graphics, grDevices, utils, datasets, methods, base
 
 Used other R packages and their versions:
-ncdf4_1.21          rgeos_0.6-3         rnaturalearth_0.3.3 RColorBrewer_1.1-3  scico_1.4.0        
-colorspace_2.1-0    tmap_3.3-3          lubridate_1.9.2     forcats_1.0.0       stringr_1.5.0      
-purrr_1.0.1         readr_2.1.4         tibble_3.2.1        tidyverse_2.0.0     ggplot2_3.4.2      
-tidyr_1.3.0         matrixStats_1.0.0   sf_1.0-14           raster_3.6-23       sp_2.0-0           
-terra_1.7-39        dplyr_1.1.2         readxl_1.4.3        openxlsx_4.2.5.2    rstudioapi_0.15.0  
-raveio_0.1.0
+lubridate_1.9.3     stringr_1.5.1       purrr_1.0.2        
+readr_2.1.5         tibble_3.2.1        tidyverse_2.0.0    
+ggalt_0.4.0         reshape2_1.4.4      ggtern_3.5.0       
+RColorBrewer_1.1-3  tmap_3.3-4          scico_1.5.0        
+colorspace_2.1-1    forcats_1.0.0       ggplot2_3.5.1      
+matrixStats_1.4.1   rstudioapi_0.16.0   rhdf5_2.48.0       
+rnaturalearth_1.0.1 tidyr_1.3.1         sf_1.0-16          
+readxl_1.4.3        openxlsx_4.2.7.1    raster_3.6-30      
+sp_2.1-4            dplyr_1.1.4         terra_1.7-83       
+ncdf4_1.23  
 
 ### Refrerences
 

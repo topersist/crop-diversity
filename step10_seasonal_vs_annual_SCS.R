@@ -99,6 +99,10 @@ for (crop in compare_crops) {
     # project raster to Robinson proj
     #r_div_rob <- terra::project(r_div_comb, "+proj=robin +over", mask = TRUE)
     
+    # save raster
+    r_path <- paste0(results_path_seas, crop, '/SCS_comparison_seas_annual', temp, '_', crop, '.tiff')
+    writeRaster(r_div_comb, r_path, overwrite=TRUE)
+    
     # crop raster to exclude Antarctica from map
     r_div_comb <- crop(r_div_comb, ext(-180, 180, -56, 90))
     

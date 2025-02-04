@@ -697,11 +697,15 @@ plot_SCS_map <- function(results_path, crop, spam_year, coastline, r_land, tocrs
   r_SCS <- c(r_SCS_tot_baseline, r_SCS_tot_15wp, r_SCS_tot_2wp, r_SCS_tot_3wp,
              r_SCS_tot_4wp)
   
+  # save raster
+  r_path <- paste(results_path, crop, '/SCS_map_', crop, '.tiff', sep="")
+  writeRaster(r_SCS, r_path, overwrite=TRUE)
+  
   # crop raster to exclude Antarctica from map
   map <- terra::crop(r_SCS, ext(-180, 180, -56, 90), mask = TRUE, overwrite = TRUE)
   r_land <- terra::crop(r_land, ext(-180, 180, -56, 90), mask = TRUE, overwrite = TRUE)
   
-  # change -9999 (non-cropland) ans sea to NA
+  # change -9999 (non-cropland) and sea to NA
   map[map == -9999] <- NA
   r_land[r_land == 0] <- NA
 

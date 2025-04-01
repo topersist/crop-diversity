@@ -129,9 +129,9 @@ for level = 1:(length(warming_levels))
     v_area_5arcmin = area_5arcmin(hIndex);
     clearvars area_5arcmin;
     
-    hold_classes = accumarray(int32(v_data_hold_present(:,10)),int32(v_data_hold_present(:,10)),[],@nanmean);
-    hold_classes(:,2) = accumarray(int32(v_data_hold_present(:,10)),v_area_5arcmin,[],@nansum);
-    hold_classes(:,3) = hold_classes(:,2) ./ nansum(hold_classes(:,2));
+    hold_classes = accumarray(int32(v_data_hold_present(:,10)),int32(v_data_hold_present(:,10)),[],@(x) mean(x, 'omitnan'));
+    hold_classes(:,2) = accumarray(int32(v_data_hold_present(:,10)),v_area_5arcmin,[],@(x) sum(x, 'omitnan'));
+    hold_classes(:,3) = hold_classes(:,2) ./ sum(hold_classes(:,2),"omitnan");
     
     fileName_tabulated_present = strcat(folder_results, '/tabulated_holdridge_results_present_', date, '.csv');
     writematrix(hold_classes, fileName_tabulated_present);
@@ -158,9 +158,9 @@ for level = 1:(length(warming_levels))
     
     % area for each class & holdridge classes
     
-    hold_classes7 = accumarray(int32(v_data_hold_7),int32(v_data_hold_7),[],@nanmean);
-    hold_classes7(:,2) = accumarray(int32(v_data_hold_7),v_area_5arcmin,[],@nansum);
-    hold_classes7(:,3) = hold_classes7(:,2) ./ nansum(hold_classes7(:,2));
+    hold_classes7 = accumarray(int32(v_data_hold_7),int32(v_data_hold_7),[],@(x) mean(x, 'omitnan'));
+    hold_classes7(:,2) = accumarray(int32(v_data_hold_7),v_area_5arcmin,[],@(x) sum(x, 'omitnan'));
+    hold_classes7(:,3) = hold_classes7(:,2) ./ sum(hold_classes7(:,2),"omitnan");
     
     v_data_hold_present(:,11) = v_data_hold_7;
     
@@ -246,12 +246,12 @@ for level = 1:(length(warming_levels))
         % area for each class & holdridge classes
         
         temp = accumarray((int32(v_data_hold_future(:,10,gcm))),...
-            int32(v_data_hold_future(:,10,gcm)),[],@nanmean);
+            int32(v_data_hold_future(:,10,gcm)),[],@(x) mean(x, 'omitnan'));
         hold_classes_fut(1:size(temp,1),1,gcm) = temp;
         hold_classes_fut(1:size(temp,1),2,gcm) = ...
-            accumarray(int32(v_data_hold_future(:,10,gcm)),v_area_5arcmin,[],@nansum);
+            accumarray(int32(v_data_hold_future(:,10,gcm)),v_area_5arcmin,[],@(x) sum(x, 'omitnan'));
         hold_classes_fut(1:size(temp,1),3,gcm) = ...
-            hold_classes_fut(1:size(temp,1),2,gcm) ./ nansum(hold_classes_fut(1:size(temp,1),2,gcm));
+            hold_classes_fut(1:size(temp,1),2,gcm) ./ sum(hold_classes_fut(1:size(temp,1),2,gcm),"omitnan");
                 
     end
     
@@ -281,9 +281,9 @@ for level = 1:(length(warming_levels))
             % area for each class & holdridge classes
             
             hold_classes7_fut(:,1,gcm) = ...
-                accumarray(int32(v_data_hold_7_fut(:,gcm)),int32(v_data_hold_7_fut(:,gcm)),[],@nanmean);
-            hold_classes7_fut(:,2,gcm) = accumarray(int32(v_data_hold_7_fut(:,gcm)),v_area_5arcmin,[],@nansum);
-            hold_classes7_fut(:,3,gcm) = hold_classes7_fut(:,2,gcm) ./ nansum(hold_classes7_fut(:,2,gcm));
+                accumarray(int32(v_data_hold_7_fut(:,gcm)),int32(v_data_hold_7_fut(:,gcm)),[],@(x) mean(x, 'omitnan'));
+            hold_classes7_fut(:,2,gcm) = accumarray(int32(v_data_hold_7_fut(:,gcm)),v_area_5arcmin,[],@(x) sum(x, 'omitnan'));
+            hold_classes7_fut(:,3,gcm) = hold_classes7_fut(:,2,gcm) ./ sum(hold_classes7_fut(:,2,gcm),"omitnan");
             
     end
 

@@ -100,7 +100,7 @@ for level = 1:size(warming_levels, 2)
     temp_threshold(3) = 0.5 * distance_min_mean;
     temp_threshold(4) = 0.75 * distance_min_mean;
     temp_threshold(5) = 1 * distance_min_mean;
-    temp_threshold(6) = nanmax(nanmax(nanmax((v_data_distance(:,1,:)))));
+    temp_threshold(6) = max(max(max((v_data_distance(:,1,:)),[],"omitnan"),[],"omitnan"),[],"omitnan");
     
     for gcm = 1:size(v_data_hold_future,3)        
         v_temp = zeros(size(v_data_distance(:,1,gcm)));

@@ -1,0 +1,113 @@
+Step 3:
+L14: changed hard coding to a flexible/automatic selection of the folder
+data_folder = fullfile(folder_wd,'data')
+
+
+Error message: 
+	>>         urlList = readtable( ... ...
+        	    'input/worldclim_data_download_4scen.xlsx','Sheet','current','Range','D6:D8', ReadVariableNames=false);
+	Error using readtable (line 517)
+	Unable to find or open 'input/worldclim_data_download_4scen.xlsx'. Check the path and filename or file permissions.
+
+Solution: 
+	Line 117: Added in cd(folder_wd) before urlList = readtable( ...
+        'input/worldclim_data_download_4_scen.xlsx','Sheet','current','Range','D18:D26', ReadVariableNames=false)
+
+	Same fix used 3 more times (L138, L335, and L394)
+
+Step 3: 
+Error message:
+	>>	Error using websave (line 98)
+		The connection to URL 'http://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_5m_tmin.zip' timed out after inf seconds.
+		The reason is "Failed to connect to biogeo.ucdavis.edu port 80 after 21561 ms: Could not connect to server". Perhaps the
+		server is not responding or weboptions.Timeout needs to be set to a higher value.
+
+		Error in step3_holdridge_download_data_missing_removed (line 152)
+            	tempUrl = websave(fileNameZip,fileUrl, options);
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Solution: 
+	Updated links in input excel sheet to https://geodata.ucdavis.edu/climate/worldclim/2_1/base/ and https://geodata.ucdavis.edu/climate/worldclim/2_1/fut/5m/
+	 as appropriate. Watch out, on sheet 'future_2030' not all of the cells concatenate properly. Make sure to adjust this too.
+
+Error message:
+	>>	Unrecognized function or variable 'nansum'.
+
+		Error in f_holdridge_parameters_no_Tmax_cap (line 105)
+		    temp_noFrost = nansum(noFrostDays,3);
+		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		Error in step3_holdridge_download_data_missing_removed (line 276)
+	    	[temp_data_out] = f_holdridge_parameters_no_Tmax_cap(temp_data,bias_correction_tavg, gs_filter);
+		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Solution:
+	replace nansum with sum(....,"omitnan") where appropriate in f_holdridge_parameters_no_Tmax_cap.m
+
+Error message:
+	>> Error using websave (line 104)
+	Unable to open output file: '/5m/wc2.1_5m_tmin_BCC-CSM2-MR_ssp126_2021' for writing. Common reasons include that the file
+	exists and does not have write permission or the folder does not have write permissions.
+
+	Error in step3_holdridge_download_data_missing_removed (line 379)
+        	            tempUrl = websave(fileNameZip,fileUrl, options);
+                	              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Solution:
+	Change line 364 fileNameZip = fileUrl(54:94); to fileNameZip = fileUrl(58:94);
+
+
+
+Step 3 takes 83 min to run if doing a clean/fresh run.
+
+
+Step 4:
+Error message:
+	Error using accumarray
+	Unrecognized function or variable 'nanmean'.
+
+	Error in step4_holdridge_define_classes (line 132)
+	    hold_classes = accumarray(int32(v_data_hold_present(:,10)),int32(v_data_hold_present(:,10)),[],@nanmean);
+	    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 
+Solution:
+	Replace 
+		hold_classes7 = accumarray(int32(v_data_hold_7),int32(v_data_hold_7),[],@nanmean);
+   	    	hold_classes7(:,2) = accumarray(int32(v_data_hold_7),v_area_5arcmin,[],@nansum);
+	With
+	    hold_classes7 = accumarray(int32(v_data_hold_7), int32(v_data_hold_7), [], @(x) mean(x, 'omitnan'));
+	    hold_classes7(:,2) = accumarray(int32(v_data_hold_7), v_area_5arcmin, [], @(x) sum(x, 'omitnan'));
+
+
+Similarly replaced other instances, and those with nansum()/nanmean() with sum(,"omitnan"), and mean(,"omitnan"). 12 changes in total, if I recall correctly
+
+Take 5 min to run
+
+Step 5 requires a similar change to L103: temp_threshold(6) = nanmax(nanmax(nanmax((v_data_distance(:,1,:))))); 
+becomes: temp_threshold(6) = max(max(max((v_data_distance(:,1,:)),[],"omitnan"),[],"omitnan"),[],"omitnan");
+Takes 2 min to run
+
+
+Step 6:
+Error message:
+	Error using f_holdridge_vs_ref_boxed (line 185)
+	An UndefinedFunction error was thrown on the workers for 'nanmax'.  This might be because the file containing 'nanmax' is
+	not accessible on the workers. Use addAttachedFiles(pool, files) to specify the required files to be attached.  For more
+	information, see the documentation for 'parallel.Pool/addAttachedFiles'.
+
+	Error in step6_holdridge_analyses_main (line 144)
+	    parfor k= 1:(length(keys(input_map)))
+
+	Caused by:
+	    Error using accumarray
+	    Unrecognized function or variable 'nanmax'.
+
+Solution:
+	Same as above, changing to max with "omitnan"
+
+Error message: same problem as above in 'f_hold_ref_box_to_raster_allGCMs.m'
+
+46 min per run!
+
+
+
+
+mika.jalava@aalto.fi for coding questions

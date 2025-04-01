@@ -102,7 +102,7 @@ else
         clearvars temp*
     end
     
-    temp_noFrost = nansum(noFrostDays,3);
+    temp_noFrost = sum(noFrostDays,3,"omitnan");
     Fmean = temp_noFrost > 364.5;
     
     clearvars temp* daysOfMonth noFrostDays

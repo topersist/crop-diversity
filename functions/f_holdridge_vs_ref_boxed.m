@@ -182,10 +182,10 @@ function [aggreg_SCS_med, aggreg_SCS_GCMs, glob_ref_table_out,....
 
             % Create region indices
             region_m(region_m == 0) = max(region_m(:))+99;
-            region_idx = double(accumarray(region_m(:), region_m(:),[],@nanmax));
+            region_idx = double(accumarray(region_m(:), region_m(:),[],@(x) max(x, [], 'omitnan')));
             
             % calculate total production within each region
-            ref_tot_per_region = accumarray(region_m(:), ref_m(:), [], @nansum);
+            ref_tot_per_region = accumarray(region_m(:), ref_m(:), [], @(x) sum(x, [], 'omitnan'));
         
             % Create table for regional results - columns: region id, sum
             % of reference data, proportion outside SCS (all zero in baseline scenario)
@@ -222,20 +222,20 @@ function [aggreg_SCS_med, aggreg_SCS_GCMs, glob_ref_table_out,....
         
             % Create country indices
             cntry_m(cntry_m == 0) = max(cntry_m(:))+999;
-            cntry_idx = double(accumarray(cntry_m(:), cntry_m(:),[],@nanmax));
+            cntry_idx = double(accumarray(cntry_m(:), cntry_m(:),[],@(x) max(x, [], 'omitnan')));
         
             % Calculate sum of ref data outside safe climatic space (at least half of the
             % GCMs indicate so) for each country, using
             % ref_95_prcnt_hold_pres = major production
             ref_xtrm = ref_95_prcnt_pres.*(ref_map_GCMs == 3 | ref_map_GCMs == 4);
     
-            ref_tot_per_cntry = accumarray(cntry_m(:), ref_95_prcnt_pres(:), [], @nansum);
+            ref_tot_per_cntry = accumarray(cntry_m(:), ref_95_prcnt_pres(:), [], @(x) sum(x, 'omitnan'));
     
             % Create a table for country level results - columns: country_id, sum
             % of reference data, proportion outside SCS
             cntry_table = [cntry_idx,...
                 ref_tot_per_cntry,...
-                accumarray(cntry_m(:),ref_xtrm(:),[],@nansum) ./ ref_tot_per_cntry];
+                accumarray(cntry_m(:),ref_xtrm(:),[],@(x) sum(x, 'omitnan')) ./ ref_tot_per_cntry];
     
             cntry_table(cntry_table(:,1) == 0,:) = [];
 

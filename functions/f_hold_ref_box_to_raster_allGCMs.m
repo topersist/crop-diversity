@@ -29,10 +29,10 @@ function [SCS_out, aggreg_SCS_GCMs, region_table, aggreg_area_GCMs] = f_hold_ref
 
     % Create region indices
     region_m(region_m == 0) = max(region_m(:))+99;
-    region_idx = double(accumarray(region_m(:), region_m(:),[],@nanmax));
+    region_idx = double(accumarray(region_m(:), region_m(:),[],@(x) max(x, [], 'omitnan')));
     
     % calculate total production within each region
-    ref_tot_per_region = accumarray(region_m(:), ref_data(:), [], @nansum);
+    ref_tot_per_region = accumarray(region_m(:), ref_data(:), [], @(x) sum(x, [], 'omitnan'));
 
     % Create table for regional results - columns: region id, sum
     % of reference data, proportion outside SCS (still empty)

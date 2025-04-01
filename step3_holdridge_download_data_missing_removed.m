@@ -11,7 +11,7 @@ cd(folder_wd)
 %% Initialise run
 
 % folder where data will be stored
-data_folder = 'D:\Article 1 results\data\';
+data_folder = fullfile(folder_wd,'data')
 
 % version of the run
 s_version = '1';
@@ -113,6 +113,7 @@ for year = 1:size(future_years, 2)
         options = weboptions('Timeout', Inf);
         
         % load the URL list for present data
+        cd(folder_wd)
         urlList = readtable( ...
             'input/worldclim_data_download_4scen.xlsx','Sheet','current','Range','D18:D26', ReadVariableNames=false)
     
@@ -120,8 +121,7 @@ for year = 1:size(future_years, 2)
         mainFolder = cd(folder_data_present);
     
     
-        for i = 1:size(urlList,1)
-    
+        for i = 1:size(urlList,1)    
             fileNameZip = 'temp.zip';
             fileUrl = urlList{i,1}{1};
             tempUrl = websave(fileNameZip,fileUrl, options);
@@ -134,7 +134,8 @@ for year = 1:size(future_years, 2)
         
     
     % load the URL list for baseline data
-        urlList = readtable( ...
+        cd(folder_wd)
+        urlList = readtable( ... 
             'input/worldclim_data_download_4scen.xlsx','Sheet','current','Range','D6:D8', ReadVariableNames=false);
         
         % go to data folder, store main folder
@@ -164,7 +165,6 @@ for year = 1:size(future_years, 2)
     
     
     %% calculate holdridge parameters
-    
     % go to data folder, store main folder
     mainFolder = cd(folder_data_present);
     
@@ -326,10 +326,10 @@ for year = 1:size(future_years, 2)
     
     if ((s_download == 1)||(s_download == 3))
         % download
-    
     % specify websave options
     options = weboptions('Timeout', Inf);    
     
+    cd(folder_wd)
     [num,urlList,raw] = xlsread(...
         'input/worldclim_data_download_4scen.xlsx',future_sheet,'I7:H141');
     clearvars num raw
@@ -342,16 +342,16 @@ for year = 1:size(future_years, 2)
     
     %  download datasets
     for gcm = 1:8
-        disp(['current gcm to be downloaded is ', num2str(gcm)]);
+        %disp(['current gcm to be downloaded is ', num2str(gcm)]);
         for ssp = 1:4
-            disp(['current ssp to be downloaded is ', num2str(ssp)]);
+            %disp(['current ssp to be downloaded is ', num2str(ssp)]);
             
             
             for var = 1:3 % we do not need the 4th dimension, i.e. bio variables
-                disp(['current var to be downloaded is ', num2str(var)]);
+                %disp(['current var to be downloaded is ', num2str(var)]);
                 %fileNameZip = 'temp.zip';
                 fileUrl = urlList{(gcm-1)*16 + (ssp-1)*4 + var,1};
-                fileNameZip = fileUrl(54:94);
+                fileNameZip = fileUrl(58:94);
                    
                 % check if already downloaded
                 
@@ -362,7 +362,6 @@ for year = 1:size(future_years, 2)
                     % nothing happends
                 %end
                 
-                % skip the variable for which the link is broken
                 if (gcm == 8) && (ssp == 4) && (var == 2) && (strcmp(futureYear,'2030'))
                     % nothing happens
                 else
@@ -388,7 +387,7 @@ for year = 1:size(future_years, 2)
     end
     
     %% calculate the holdridge parameters
-    
+    cd(folder_wd)
     [num,urlList,raw] = xlsread(...
         'input/worldclim_data_download_4scen.xlsx',future_sheet,'I7:H141');
     clearvars num raw
@@ -579,14 +578,3 @@ for year = 1:size(future_years, 2)
     % figure;imagesc(temp);
     % geotiffwrite('results/biotemp_present.tif',temp,R_5arcmin);
 end
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
